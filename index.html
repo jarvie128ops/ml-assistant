@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mercado Livre 运营助手</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f5f7;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+
+  .brand-bar {
+    background: #fff200;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #e6d800;
+  }
+  .brand-bar svg { flex-shrink: 0; }
+  .brand-title { font-size: 18px; font-weight: 700; color: #1a1a2e; letter-spacing: 0.3px; }
+  .brand-sub { font-size: 12px; color: #555; margin-left: auto; white-space: nowrap; }
+
+  .nav {
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 13px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .nav-btn:hover { color: #1a73e8; }
+  .nav-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 600; }
+
+  .main { max-width: 680px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e0e4ea;
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .card-title { font-size: 16px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .card-desc { font-size: 13px; color: #777; margin-bottom: 20px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+  .field label .req { color: #e53935; margin-left: 2px; }
+  .field label .opt { font-weight: 400; color: #999; font-size: 12px; margin-left: 4px; }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #d0d7de;
+    border-radius: 7px;
+    font-size: 14px;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: inherit;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: #1a73e8;
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .btn-send {
+    width: 100%;
+    padding: 12px;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.2s, opacity 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .btn-send:hover:not(:disabled) { background: #1557b0; }
+  .btn-send:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .notice {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 11px 14px;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #2e7d32;
+    font-weight: 500;
+  }
+  .notice.show { display: flex; }
+
+  .error-msg {
+    display: none;
+    margin-top: 10px;
+    padding: 9px 13px;
+    background: #fdecea;
+    border: 1px solid #f5c6c6;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #c62828;
+  }
+  .error-msg.show { display: block; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #e0e4ea;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-header h3 { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+  .modal-header p { font-size: 12px; color: #777; margin-top: 3px; }
+  .modal-close { background: none; border: none; cursor: pointer; font-size: 20px; color: #888; line-height: 1; padding: 4px; }
+  .modal-close:hover { color: #333; }
+  .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+  .modal-prompt {
+    width: 100%;
+    min-height: 180px;
+    background: #f8f9fa;
+    border: 1px solid #d0d7de;
+    border-radius: 7px;
+    padding: 12px;
+    font-size: 13px;
+    color: #1a1a2e;
+    line-height: 1.6;
+    resize: none;
+    font-family: inherit;
+  }
+  .modal-footer { padding: 12px 20px 16px; display: flex; gap: 10px; }
+  .btn-copy {
+    flex: 1;
+    padding: 11px;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-copy:hover { background: #1557b0; }
+  .btn-copy.copied { background: #2e7d32; }
+  .btn-cancel {
+    padding: 11px 18px;
+    background: #f1f3f4;
+    color: #444;
+    border: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-cancel:hover { background: #e0e0e0; }
+
+  @media (max-width: 480px) {
+    .card { padding: 18px 14px; }
+    .brand-title { font-size: 15px; }
+    .brand-sub { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="brand-bar">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="3" y1="6" x2="21" y2="6" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M16 10a4 4 0 01-8 0" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="brand-title">Mercado Livre 运营助手</span>
+  <span class="brand-sub">AI 驱动 · 跨境电商</span>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchPanel('kw', this)">关键词 &amp; 标题</button>
+  <button class="nav-btn" onclick="switchPanel('desc', this)">描述优化</button>
+  <button class="nav-btn" onclick="switchPanel('mkt', this)">市场分析</button>
+</nav>
+
+<div class="main">
+
+  <!-- Panel 1 -->
+  <div class="panel active" id="panel-kw">
+    <div class="card">
+      <div class="card-title">关键词 &amp; 标题优化</div>
+      <div class="card-desc">输入产品信息，Claude 将生成适合 Mercado Livre 的葡萄牙语关键词与标题方案。</div>
+
+      <div class="field">
+        <label>产品类目 <span class="req">*</span></label>
+        <input type="text" id="kw-cat" placeholder="例：fone de ouvido bluetooth / 蓝牙耳机">
+      </div>
+      <div class="field">
+        <label>核心卖点 <span class="opt">（选填）</span></label>
+        <input type="text" id="kw-feat" placeholder="例：降噪，续航40小时，折叠设计">
+      </div>
+      <div class="field">
+        <label>目标市场</label>
+        <select id="kw-mkt">
+          <option value="巴西 Mercado Livre Brasil">巴西 Mercado Livre Brasil</option>
+          <option value="阿根廷 Mercado Libre Argentina">阿根廷 Mercado Libre Argentina</option>
+          <option value="墨西哥 Mercado Libre México">墨西哥 Mercado Libre México</option>
+        </select>
+      </div>
+
+      <button class="btn-send" id="btn-kw" onclick="sendKw()">发送至 Claude 分析</button>
+      <div class="error-msg" id="err-kw">请填写产品类目后再发送。</div>
+      <div class="notice" id="notice-kw">✅ 已发送至 Claude，请查看对话框获取分析结果。</div>
+    </div>
+  </div>
+
+  <!-- Panel 2 -->
+  <div class="panel" id="panel-desc">
+    <div class="card">
+      <div class="card-title">描述优化</div>
+      <div class="card-desc">粘贴原始产品描述，Claude 将诊断问题并输出高转化葡萄牙语优化版本。</div>
+
+      <div class="field">
+        <label>原始描述内容 <span class="req">*</span></label>
+        <textarea id="desc-orig" placeholder="将产品页面的描述文字粘贴至此..."></textarea>
+      </div>
+      <div class="field">
+        <label>产品链接 <span class="opt">（选填）</span></label>
+        <input type="text" id="desc-url" placeholder="https://www.mercadolivre.com.br/...">
+      </div>
+      <div class="field">
+        <label>补充重点 <span class="opt">（选填）</span></label>
+        <input type="text" id="desc-extra" placeholder="例：强调质保2年，适合健身人群">
+      </div>
+
+      <button class="btn-send" id="btn-desc" onclick="sendDesc()">发送至 Claude 分析</button>
+      <div class="error-msg" id="err-desc">请填写原始描述内容后再发送。</div>
+      <div class="notice" id="notice-desc">✅ 已发送至 Claude，请查看对话框获取分析结果。</div>
+    </div>
+  </div>
+
+  <!-- Panel 3 -->
+  <div class="panel" id="panel-mkt">
+    <div class="card">
+      <div class="card-title">市场分析</div>
+      <div class="card-desc">输入产品链接或类目名称，Claude 将分析竞争格局、价格带与入场策略。</div>
+
+      <div class="field">
+        <label>产品链接 <span class="opt">（选填）</span></label>
+        <input type="text" id="mkt-url" placeholder="https://www.mercadolivre.com.br/...">
+      </div>
+      <div class="field">
+        <label>类目名称 <span class="opt">（选填）</span></label>
+        <input type="text" id="mkt-cat" placeholder="例：Fones de Ouvido / 蓝牙耳机">
+      </div>
+      <div class="field">
+        <label>重点关注维度 <span class="opt">（选填）</span></label>
+        <input type="text" id="mkt-focus" placeholder="例：竞品价格带，头部卖家策略，差评痛点">
+      </div>
+
+      <button class="btn-send" id="btn-mkt" onclick="sendMkt()">发送至 Claude 分析</button>
+      <div class="error-msg" id="err-mkt">请至少填写产品链接或类目名称之一。</div>
+      <div class="notice" id="notice-mkt">✅ 已发送至 Claude，请查看对话框获取分析结果。</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Fallback modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h3>📋 复制 Prompt 到 Claude 对话框</h3>
+        <p>Claude 扩展未在此页面注入，请复制后粘贴到 Claude 对话框</p>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body">
+      <textarea class="modal-prompt" id="modal-prompt" readonly></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-copy" id="btn-copy" onclick="copyPrompt()">点击复制 Prompt</button>
+      <button class="btn-cancel" onclick="document.getElementById('modal-overlay').classList.remove('show')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchPanel(id, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function showNotice(noticeId, btnId) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = false;
+    const notice = document.getElementById(noticeId);
+    notice.classList.add('show');
+    setTimeout(() => notice.classList.remove('show'), 4000);
+  }
+
+  function showError(id) {
+    const el = document.getElementById(id);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('modal-overlay'))
+      document.getElementById('modal-overlay').classList.remove('show');
+  }
+
+  function copyPrompt() {
+    const text = document.getElementById('modal-prompt').value;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✅ 已复制！请粘贴到 Claude 对话框';
+      btn.classList.add('copied');
+    }).catch(() => {
+      document.getElementById('modal-prompt').select();
+      document.execCommand('copy');
+    });
+  }
+
+  // 若 Claude Chrome 扩展未注入 sendPrompt，降级为弹窗显示 prompt
+  if (typeof sendPrompt !== 'function') {
+    window.sendPrompt = function(text) {
+      document.getElementById('modal-prompt').value = text;
+      document.getElementById('btn-copy').textContent = '点击复制 Prompt';
+      document.getElementById('btn-copy').classList.remove('copied');
+      document.getElementById('modal-overlay').classList.add('show');
+    };
+  }
+
+  function dispatch(prompt, suffix) {
+    sendPrompt(prompt);
+    if (typeof sendPrompt._native !== 'undefined' || document.getElementById('modal-overlay').classList.contains('show') === false) {
+      showNotice('notice-' + suffix, 'btn-' + suffix);
+    } else {
+      document.getElementById('btn-' + suffix).disabled = false;
+    }
+  }
+
+  function sendKw() {
+    const cat  = document.getElementById('kw-cat').value.trim();
+    const feat = document.getElementById('kw-feat').value.trim();
+    const mkt  = document.getElementById('kw-mkt').value;
+    if (!cat) { showError('err-kw'); return; }
+
+    document.getElementById('btn-kw').disabled = true;
+    sendPrompt(`你是巴西Mercado Livre平台资深运营专家，精通葡萄牙语SEO。
+产品类目：${cat}
+核心卖点：${feat || '无'}
+目标市场：${mkt}
+
+请输出：
+【核心关键词】15-20个按重要性排列（葡萄牙语）
+【长尾关键词】10个（葡萄牙语）
+【推荐标题】3个方案，每个严格60字符以内（葡萄牙语），注明字符数
+【埋词建议】3-5条，说明关键词如何分布在标题/描述/属性中`);
+
+    showNotice('notice-kw', 'btn-kw');
+  }
+
+  function sendDesc() {
+    const orig  = document.getElementById('desc-orig').value.trim();
+    const url   = document.getElementById('desc-url').value.trim();
+    const extra = document.getElementById('desc-extra').value.trim();
+    if (!orig) { showError('err-desc'); return; }
+
+    document.getElementById('btn-desc').disabled = true;
+    sendPrompt(`你是巴西Mercado Livre平台资深运营专家，擅长撰写高转化葡萄牙语产品描述。
+产品链接：${url || '未提供'}
+原始描述：
+${orig}
+补充说明：${extra || '无'}
+
+请输出：
+【问题诊断】原描述3-5个主要问题
+【优化版描述（葡萄牙语）】可直接使用，结构清晰，300-500字，自然埋入关键词
+【优化说明】主要改动点3-5条`);
+
+    showNotice('notice-desc', 'btn-desc');
+  }
+
+  function sendMkt() {
+    const url   = document.getElementById('mkt-url').value.trim();
+    const cat   = document.getElementById('mkt-cat').value.trim();
+    const focus = document.getElementById('mkt-focus').value.trim();
+    if (!url && !cat) { showError('err-mkt'); return; }
+
+    document.getElementById('btn-mkt').disabled = true;
+    sendPrompt(`你是巴西跨境电商市场分析专家，熟悉Mercado Livre平台。
+产品链接：${url || '未提供'}
+类目：${cat || '根据链接判断'}
+重点关注：${focus || '综合分析'}
+
+请输出：
+【类目概况】市场规模趋势、竞争程度、买家画像
+【价格带分析】主流价格区间、各段竞争、建议切入价
+【头部卖家分析】核心优势、运营策略
+【买家痛点与机会】差评痛点、市场空缺
+【入场建议】针对中国卖家3-5条实操建议`);
+
+    showNotice('notice-mkt', 'btn-mkt');
+  }
+</script>
+</body>
+</html>
